@@ -1,2 +1,2 @@
 # vb.symChaos
-Some image generators ported from "Symmetry in Chaos".
+Some image generators ported from "Symmetry in Chaos" (Field/Golubisky).

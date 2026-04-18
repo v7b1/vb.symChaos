@@ -1,0 +1,19 @@
+{
+	"author" : "volker boehm",
+	"description" : "Some image generators ported from 'Symmetry in Chaos'",
+	"homepatcher" : "",
+	"max_version_min" : "8.1",
+	"name" : "max-external-template",
+	"os" : {
+		"macintosh" : {
+			"platform" : [ "x64", "arm64" ],
+			"min_version" : "none"
+		},
+	},
+	"package_extra" : { 
+		"reverse_domain" : "net.vboehm",
+		"copyright" : "Copyright (c) 2025 vboehm"
+	},
+	"tags" : [ ],
+	"version" : "@GIT_VERSION_MAJ@.@GIT_VERSION_MIN@.@GIT_VERSION_SUB@",
+}

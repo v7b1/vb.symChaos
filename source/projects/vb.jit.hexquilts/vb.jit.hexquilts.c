@@ -25,7 +25,7 @@ typedef struct _myObj
 	
 	double			inc;
 	double			x, y;
-	double			gamma, omega, alpha, lambda, beta, ma, shift;
+	double			gamma, omega, alpha, lambda, beta, ma;
 	long			nperiod, iterations;
 	
 } t_myObj;
@@ -40,7 +40,9 @@ void myObj_bang(t_myObj *self);
 void myObj_info(t_myObj *self);
 void myObj_period(t_myObj *self, long p);
 void myObj_inc(t_myObj *self, double f);
+void myObj_set_m(t_myObj *self, double m);
 void myObj_set_iterations(t_myObj *self, long val);
+void myObj_initial_pos(t_myObj *self, double x, double y);
 void myObj_float(t_myObj *self, double val);
 void myObj_list(t_myObj *self, t_symbol *s, long argc, t_atom *argv);
 //void myObj_outputmatrix(t_myObj *self);
@@ -65,6 +67,8 @@ void ext_main(void *r)
 	class_addmethod(max_class, (method)myObj_set_iterations, "iters", A_LONG, 0);
     class_addmethod(max_class, (method)myObj_period, "period", A_LONG, 0);
     class_addmethod(max_class, (method)myObj_inc, "inc", A_FLOAT, 0);
+    class_addmethod(max_class, (method)myObj_initial_pos, "pos", A_FLOAT, A_FLOAT, 0);
+    class_addmethod(max_class, (method)myObj_set_m, "m", A_FLOAT, 0);
 	class_addmethod(max_class, (method)myObj_list, "list", A_GIMME, 0);
     class_addmethod(max_class, (method)myObj_init, "init", 0);
     class_addmethod(max_class, (method)myObj_info, "info", 0);
@@ -105,14 +109,15 @@ void myObj_set_iterations(t_myObj *self, long val)
 
 void myObj_period(t_myObj *self, long p)
 {
-    // set number of periods
-    self->nperiod = MAX(1, p);
+//    self->nperiod = MAX(1, p);
+    self->nperiod = CLAMP(p, 1, 4);
+    // TODO:  values higher than 4 don't fill the whole matrix
 }
 
 
 void myObj_inc(t_myObj *self, double f)
 {
-    // set number of periods
+    // set increment
     self->inc = CLAMP(f, 0.001, 0.1);
 }
 
@@ -126,8 +131,7 @@ void myObj_info(t_myObj *self) {
 
 void myObj_list(t_myObj *self, t_symbol *s, long argc, t_atom *argv)
 {
-    //TODO: check number of arguments!!!
-    if ((argc>=7) && argv) {
+    if ((argc >= 5) && argv) {
         if( atom_gettype(argv) != A_FLOAT)
             object_post((t_object *)self, "we need floats values, sorry!");
         else {
@@ -136,15 +140,10 @@ void myObj_list(t_myObj *self, t_symbol *s, long argc, t_atom *argv)
             self->beta = atom_getfloat(argv+2);
             self->gamma = atom_getfloat(argv+3);
             self->omega = atom_getfloat(argv+4);
-            self->shift = atom_getfloat(argv+5);
-            self->ma = atom_getfloat(argv+6);
-            
-            self->x = atom_getfloat(argv+7);
-            self->y = atom_getfloat(argv+8);
         }
     }
     else
-        object_warn((t_object *)self, "we need a list of at least 7 floats, sorry!");
+        object_warn((t_object *)self, "we need a list of 5 floats, sorry!");
 }
 
 
@@ -155,12 +154,22 @@ void myObj_init(t_myObj *self)
 }
 
 
+void myObj_set_m(t_myObj *self, double m)
+{
+    self->ma = m;
+}
 
 
 void myObj_bang(t_myObj *self) {
     
     defer_low(self, (method)myObj_hexquilt, NULL,0, NULL);
 
+}
+
+void myObj_initial_pos(t_myObj *self, double x, double y)
+{
+    self->x = CLAMP(x, -1.0, 1.0);
+    self->y = CLAMP(y, -1.0, 1.0);
 }
 
 
@@ -198,7 +207,6 @@ void myObj_hexquilt(t_myObj *self)
         double omega = self->omega;
         double beta = self->beta;
         double ma = self->ma;
-        double shift = self->shift;
         double gamma = self->gamma;
         long nperiod = self->nperiod;
         long count = self->iterations;
@@ -376,7 +384,6 @@ void *myObj_new(t_symbol *s, long argc, t_atom *argv)
 		self->omega = 0.0;
 		
 		self->ma = 0;
-		self->shift = 0;
 		
 		self->inc = 0.002;
 		self->iterations = 40000;
@@ -387,10 +394,10 @@ void *myObj_new(t_symbol *s, long argc, t_atom *argv)
 			t_atom_long al;
 			jit_atom_arg_getsym(&self->matrix_name, 0, attrstart, argv);
 			
-			if (!jit_atom_arg_getlong(&al, 1, attrstart, argv)) {
-				C74_ASSERT_FITS_LONG(al);
-//				self->plane = (long) al;
-			}
+//			if (!jit_atom_arg_getlong(&al, 1, attrstart, argv)) {
+//				C74_ASSERT_FITS_LONG(al);
+////				self->plane = (long) al;
+//			}
 		}
 
 	}

@@ -2,7 +2,7 @@
  
  Symmetric Objects from "Symmetry in Chaos" by Fields & Golubitsy
  
- vb, 2016
+ vboehm, 2016
  */
 
 
@@ -25,8 +25,8 @@ typedef struct _myObj
 	
 	double			inc, scale;
 	double			x, y;
-	double			gamma, omega, alpha, lambda, beta, ma, shift;
-	long			nperiod, iterations;
+	double			gamma, omega, alpha, lambda, beta;
+	long			symmetry, iterations;
 	
 } t_myObj;
 
@@ -38,9 +38,10 @@ void myObj_assist(t_myObj *self, void *b, long m, long a, char *s);
 void myObj_int(t_myObj *self, long val);
 void myObj_bang(t_myObj *self);
 void myObj_info(t_myObj *self);
-void myObj_period(t_myObj *self, long p);
+void myObj_symmetry(t_myObj *self, long p);
 void myObj_inc(t_myObj *self, double f);
 void myObj_scale(t_myObj *self, double s);
+void myObj_initial_pos(t_myObj *self, double x, double y);
 void myObj_set_iterations(t_myObj *self, long val);
 void myObj_float(t_myObj *self, double val);
 void myObj_list(t_myObj *self, t_symbol *s, long argc, t_atom *argv);
@@ -64,9 +65,10 @@ void ext_main(void *r)
 	class_addmethod(max_class, (method)myObj_int, "int", A_LONG, 0);
 	class_addmethod(max_class, (method)myObj_bang, "bang", 0);
 	class_addmethod(max_class, (method)myObj_set_iterations, "iters", A_LONG, 0);
-    class_addmethod(max_class, (method)myObj_period, "period", A_LONG, 0);
+    class_addmethod(max_class, (method)myObj_symmetry, "symmetry", A_LONG, 0);
     class_addmethod(max_class, (method)myObj_inc, "inc", A_FLOAT, 0);
     class_addmethod(max_class, (method)myObj_scale, "scale", A_FLOAT, 0);
+    class_addmethod(max_class, (method)myObj_initial_pos, "pos", A_FLOAT, A_FLOAT, 0);
 	class_addmethod(max_class, (method)myObj_list, "list", A_GIMME, 0);
     class_addmethod(max_class, (method)myObj_init, "init", 0);
     class_addmethod(max_class, (method)myObj_info, "info", 0);
@@ -77,8 +79,18 @@ void ext_main(void *r)
 	class_addmethod(max_class, (method)myObj_assist, "assist", A_CANT, 0);
 	//class_addmethod(max_class, (method)myObj_notify, "notify", A_CANT, 0);
     //max_jit_class_addmethod_usurp_low(max_class, (method)myObj_outputmatrix, "outputmatrix");
+    
+    class_register(CLASS_BOX, max_class);
+    
+    
+    // attr stuff
+//    CLASS_ATTR_LONG(max_class, "interations", 0, t_myObj, iterations);
+//    CLASS_ATTR_LABEL(max_class, "interations", 0, "number of iterations per bang");
+//    CLASS_ATTR_FILTER_CLIP(max_class, "interations", 1, 999999);
+////    CLASS_ATTR_ACCESSORS(max_class, "interations", NULL, (method)myObj_set_iterations);
+//    CLASS_ATTR_SAVE(max_class, "interations", 0);
 
-	class_register(CLASS_BOX, max_class);
+	
 	myObj_class = max_class;
 	
 }
@@ -105,18 +117,19 @@ void myObj_set_iterations(t_myObj *self, long val)
 }
 
 
-void myObj_period(t_myObj *self, long p)
-{
-    // set number of periods
-    self->nperiod = MAX(1, p);
-}
-
-
 void myObj_inc(t_myObj *self, double f)
 {
-    // set number of periods
+    // set increment
     self->inc = CLAMP(f, 0.001, 0.1);
 }
+
+
+void myObj_initial_pos(t_myObj *self, double x, double y)
+{
+    self->x = CLAMP(x, -1.0, 1.0);
+    self->y = CLAMP(y, -1.0, 1.0);
+}
+
 
 void myObj_info(t_myObj *self) {
     
@@ -128,7 +141,7 @@ void myObj_info(t_myObj *self) {
 void myObj_list(t_myObj *self, t_symbol *s, long argc, t_atom *argv)
 {
     //TODO: check number of arguments!!!
-    if ((argc>=7) && argv) {
+    if ((argc >= 5) && argv) {
         if( atom_gettype(argv) != A_FLOAT)
             object_post((t_object *)self, "we need floats values, sorry!");
         else {
@@ -137,15 +150,16 @@ void myObj_list(t_myObj *self, t_symbol *s, long argc, t_atom *argv)
             self->beta = atom_getfloat(argv+2);
             self->gamma = atom_getfloat(argv+3);
             self->omega = atom_getfloat(argv+4);
-            self->shift = atom_getfloat(argv+5);
-            self->ma = atom_getfloat(argv+6);
-            
-            self->x = atom_getfloat(argv+7);
-            self->y = atom_getfloat(argv+8);
         }
     }
     else
-        object_warn((t_object *)self, "we need a list of at least 7 floats, sorry!");
+        object_warn((t_object *)self, "we need a list of at 5 floats, sorry!");
+}
+
+void myObj_symmetry(t_myObj *self, long p)
+{
+    // set symmetry
+    self->symmetry = MAX(1, p);
 }
 
 
@@ -153,12 +167,23 @@ void myObj_init(t_myObj *self)
 {
     self->x = 0.01;
     self->y = 0.003;
+    
+    self->symmetry = 6;
+    self->lambda = -2.7;
+    self->alpha = 5.0;
+    self->beta = 1.5;
+    self->gamma = 1.0;
+    self->omega = 0.0;
+    
+    self->inc = 0.002;
+    self->iterations = 40000;
+    self->scale = 2.0;
 }
 
 
 void myObj_scale(t_myObj *self, double s)
 {
-    self->scale = s * 2.0;
+    self->scale = (1.0/s) * 2.0;
 }
 
 
@@ -205,10 +230,7 @@ void myObj_do_it(t_myObj *self)
         double gamma = self->gamma;
         double omega = self->omega;
         
-        double ma = self->ma;
-        double shift = self->shift;
-        
-        long nperiod = self->nperiod;
+        long symmetry = self->symmetry;
         long count = self->iterations;
         long xdim = minfo.dim[0];
         long ydim = minfo.dim[1];
@@ -223,7 +245,7 @@ void myObj_do_it(t_myObj *self)
             double zreal = x;
             double zimag = y;
             
-            for (int i=1; i<nperiod-1; i++)
+            for (int i=1; i<symmetry-1; i++)
             {
                 double za = zreal*x - zimag*y;
                 double zb = zimag*x + zreal*y;
@@ -330,15 +352,12 @@ void *myObj_new(t_symbol *s, long argc, t_atom *argv)
 		
 		self->x = 0.01;
 		self->y = 0.003;
-		self->nperiod = 4;
-		self->lambda = -0.59;
-		self->alpha = 0.2;
-		self->beta = 0.1;
-		self->gamma = -0.33;
+		self->symmetry = 6;
+		self->lambda = -2.7;
+		self->alpha = 5.0;
+		self->beta = 1.5;
+		self->gamma = 1.0;
 		self->omega = 0.0;
-		
-		self->ma = 0;
-		self->shift = 0;
 		
 		self->inc = 0.002;
 		self->iterations = 40000;
@@ -350,10 +369,13 @@ void *myObj_new(t_symbol *s, long argc, t_atom *argv)
 			t_atom_long al;
 			jit_atom_arg_getsym(&self->matrix_name, 0, attrstart, argv);
 			
-			if (!jit_atom_arg_getlong(&al, 1, attrstart, argv)) {
-				C74_ASSERT_FITS_LONG(al);
-//				self->plane = (long) al;
-			}
+//			if (!jit_atom_arg_getlong(&al, 1, attrstart, argv)) {
+//				C74_ASSERT_FITS_LONG(al);
+////				self->plane = (long) al;
+//			}
+            
+//            post("attrstart: %d", attrstart);
+//            max_jit_attr_args(self, argc, argv);
 		}
 
 	}
